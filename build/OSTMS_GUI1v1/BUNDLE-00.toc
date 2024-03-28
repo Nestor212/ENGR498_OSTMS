@@ -1,0 +1,3 @@
+([('OSTMS_GUI1v1',
+   '/Users/nestorgarcia/Desktop/SlideTemp_ECE498/dist/OSTMS_GUI1v1',
+   'EXECUTABLE')],)
