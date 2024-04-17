@@ -2,7 +2,7 @@
 Title: On-Instrument Slide Temperature Measurement System GUI
 Version: 1.1
 Author: Nestor Garcia
-Date: 14 Feb 24
+Date: 01 Mar 24
 Partnership: Developed in partnership between University of Arizona Senior Design and Roche.
 
 Description:
@@ -29,6 +29,9 @@ Usage:
 To run the application, ensure all dependencies are installed and execute the main script through a Python interpreter. 
 The interface allows users to scan for serial ports, connect to a selected port, and begin temperature data acquisition 
 and visualization.
+
+Updates:
+- Improved error handling and conditional behaviour throughout.
 
 Acknowledgments:
 This project was made possible through the collaborative efforts of Roche and the University of Arizona. 
@@ -61,7 +64,7 @@ import serial
 # Placeholder for listing serial ports
 from serial.tools import list_ports
 
-ICON_PATH = os.path.join(os.path.dirname(__file__), "icon.png")
+ICON_PATH = os.path.join(os.path.dirname(__file__), "ENGR498_Logo.png")
 
 class GUI:
     def __init__(self, title):
@@ -305,9 +308,6 @@ class GUI:
             plt.colorbar(im, label='Temperature (°C)')
         self.ax.scatter(self.points[:,0], self.points[:,1], c='black', s=50)  # Measurement points
         self.canvas.draw()
-        
-        
-        
         
     def recursive_update_textbox(self, start):
         if self.timer == 10:

@@ -35,48 +35,55 @@
 #include <Math.h>
 #include <ArduinoJson.h>
 
- float ohmTable[501] = {100,100.39,100.78,101.17,101.56,101.95,102.34,102.73,103.12,
- 103.51,103.9,104.29,104.68,105.07,105.46,105.85,106.24,106.63,107.02,107.4,107.79,
- 108.18,108.57,108.96,109.35,109.73,110.12,110.51,110.9,111.28,111.67,112.06,112.45,
- 112.83,113.22,113.61,113.99,114.38,114.77,115.15,115.54,115.93,116.31,116.7,117.08,
- 117.47,117.85,118.24,118.62,119.01,119.4,119.78,120.16,120.55,120.93,121.32,121.7,
- 122.09,122.47,122.86,123.24,123.62,124.01,124.39,124.77,125.17,125.55,125.93,126.32,
- 126.7,127.08,127.46,127.85,128.23,128.61,128.99,129.38,129.76,130.14,130.52,130.9,
- 131.28,131.67,132.05,132.43,132.81,133.19,133.57,133.95,134.33,134.71,135.09,135.47,
- 135.85,136.23,136.61,136.99,137.37,137.75,138.13,138.51,138.89,139.27,139.65,140.03,
- 140.39,140.77,141.15,141.53,141.91,142.29,142.66,143.04,143.42,143.8,144.18,144.56,
- 144.94,145.32,145.69,146.07,146.45,146.82,147.2,147.58,147.95,148.33,148.71,149.08,
- 149.46,149.83,150.21,150.58,150.96,151.34,151.71,152.09,152.46,152.84,153.21,153.58,
- 153.95,154.32,154.71,155.08,155.46,155.83,156.21,156.58,156.96,157.33,157.71,158.08,
- 158.45,158.83,159.2,159.56,159.94,160.31,160.68,161.05,161.43,161.8,162.17,162.54,
- 162.91,163.28,163.66,164.03,164.4,164.77,165.14,165.51,165.88,166.25,166.62,167,
- 167.37,167.74,168.11,168.48,168.85,169.22,169.59,169.96,170.33,170.69,171.06,
- 171.43,171.8,172.17,172.54,172.91,173.27,173.64,174.01,174.39,174.75,175.12,
- 175.49,175.86,176.23,176.59,176.96,177.33,177.7,178.06,178.43,178.8,179.16,179.53,
- 179.9,180.26,180.63,180.99,181.36,181.73,182.09,182.46,182.82,183.19,183.55,183.92,
- 184.28,184.65,185.01,185.38,185.74,186.11,186.47,186.84,187.2,187.56,187.93,188.29,
- 188.65,189.02,189.38,189.74,190.11,190.47,190.83,191.2,191.56,191.92,192.28,192.66,
- 193.02,193.38,193.74,194.1,194.47,194.83,195.19,195.55,195.9,196.26,196.62,196.98,
- 197.35,197.71,198.07,198.43,198.79,199.15,199.51,199.87,200.23,200.59,200.95,201.31,
- 201.67,202.03,202.38,202.74,203.1,203.46,203.82,204.18,204.54,204.9,205.25,205.61,
- 205.97,206.33,206.7,207.05,207.41,207.77,208.13,208.48,208.84,209.2,209.55,209.91,
- 210.27,210.62,210.98,211.34,211.69,212.05,212.4,212.76,213.12,213.47,213.83,214.19,
- 214.55,214.9,215.26,215.61,215.97,216.32,216.68,217.03,217.39,217.73,218.08,218.44,
- 218.79,219.15,219.5,219.85,220.21,220.56,220.91,221.27,221.62,221.97,222.32,222.68,
- 223.03,223.38,223.73,224.09,224.45,224.8,225.15,225.5,225.85,226.21,226.56,226.91,
- 227.26,227.61,227.96,228.31,228.66,229.01,229.36,229.72,230.07,230.42,230.77,231.12,
- 231.47,231.81,232.16,232.51,232.86,233.21,233.56,233.91,234.26,234.6,234.95,235.3,
- 235.65,236,236.35,236.7,237.05,237.4,237.75,238.09,238.44,238.79,239.14,239.48,239.83,
- 240.18,240.52,240.87,241.22,241.56,241.91,242.25,242.6,242.95,243.29,243.64,243.98,
- 244.33,244.67,245.02,245.36,245.71,246.05,246.4,246.74,247.09,247.43,247.78,248.12,
- 248.46,248.81,249.15,249.5,249.84,250.18,250.53,250.89,251.21,251.55,251.9,252.24,
- 252.59,252.94,253.28,253.62,253.96,254.3,254.65,254.99,255.33,255.67,256.01,256.35,
- 256.7,257.04,257.38,257.72,258.06,258.4,258.74,259.08,259.42,259.76,260.1,260.44,
- 260.78,261.12,261.46,261.8,262.14,262.48,262.83,263.17,263.5,263.84,264.18,264.52,
- 264.86,265.2,265.54,265.87,266.21,266.55,266.89,267.22,267.56,267.9,268.24,268.57,
- 268.91,269.25,269.58,269.92,270.26,270.59,270.93,271.27,271.6,271.94,272.27,272.61,
- 272.95,273.28,273.62,273.95,274.29,274.62,274.96,275.29,275.63,275.96,276.31,276.64,
- 276.97,277.31,277.64,277.98,278.31,278.64,278.98,279.31,279.64,279.98,280.31,280.64,280.98};
+// Desired temperature range to be used with reference sensors
+const int dataPoints = 111; // Total number of data points
+const float temperatures[dataPoints] = {
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 
+  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
+  20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 
+  30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 
+  40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 
+  50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 
+  60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 
+  70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 
+  80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 
+  90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 
+  100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 
+  110
+};
+
+// Look-up table for thermistor reference sensor
+const float resistancesTherm[dataPoints] = {
+  29490.0, 28150.0, 26890.0, 25690.0, 24550.0, 23460.0, 22430.0, 21450.0, 20520.0, 19630.0, 
+  18790.0, 17980.0, 17220.0, 16490.0, 15790.0, 15130.0, 14500.0, 13900.0, 13330.0, 12790.0, 
+  12260.0, 11770.0, 11290.0, 10840.0, 10410.0, 10000.0, 9605.0, 9227.0, 8867.0, 8523.0, 
+  8194.0, 7880.0, 7579.0, 7291.0, 7016.0, 6752.0, 6500.0, 6258.0, 6026.0, 5805.0, 
+  5592.0, 5389.0, 5193.0, 5006.0, 4827.0, 4655.0, 4489.0, 4331.0, 4179.0, 4033.0, 
+  3893.0, 3758.0, 3629.0, 3504.0, 3385.0, 3270.0, 3160.0, 3054.0, 2952.0, 2854.0, 
+  2760.0, 3669.0, 2582.0, 2497.0, 2417.0, 2339.0, 2264.0, 2191.0, 2122.0, 2055.0, 
+  1990.0, 1928.0, 1868.0, 1810.0, 1754.0, 1700.0, 1648.0, 1598.0, 1549.0, 1503.0, 
+  1458.0, 1414.0, 1372.0, 1332.0, 1293.0, 1255.0, 1218.0, 1183.0, 1149.0, 1116.0, 
+  1084.0, 1053.0, 1023.0, 994.2, 966.3, 939.3, 913.2, 887.9, 863.4, 839.7, 
+  816.8, 794.6, 773.1, 752.3, 732.1, 712.6, 693.6, 675.3, 657.5, 640.3, 
+  623.5
+};
+
+
+// Look up table for RTD-100 reference sensor
+const float resistancesRTD[dataPoints] = {
+ 100.0, 100.39, 100.78, 101.17, 101.56, 101.95, 102.34, 102.73, 103.12, 103.51, 
+ 103.9, 104.29 ,104.68, 105.07, 105.46, 105.85, 106.24, 106.63, 107.02, 107.4, 
+ 107.79, 108.18, 108.57, 108.96, 109.35, 109.73, 110.12, 110.51, 110.9, 111.28,
+ 111.67, 112.06, 112.45, 112.83, 113.22, 113.61, 113.99, 114.38, 114.77, 115.15,
+ 115.54, 115.93, 116.31, 116.7, 117.08, 117.47, 117.85, 118.24, 118.62, 119.01, 
+ 119.4, 119.78, 120.16, 120.55, 120.93, 121.32, 121.7, 122.09, 122.47, 122.86, 
+ 123.24, 123.62, 124.01, 124.39, 124.77, 125.17, 125.55, 125.93, 126.32, 126.7,
+ 127.08, 127.46, 127.85, 128.23, 128.61, 128.99, 129.38, 129.76, 130.14, 130.52,
+ 130.9, 131.28, 131.67, 132.05, 132.43, 132.81, 133.19, 133.57, 133.95, 134.33, 
+ 134.71, 135.09,135.47, 135.85, 136.23, 136.61, 136.99, 137.37, 137.75, 138.13, 
+ 138.51, 138.89, 139.27, 139.65, 140.03, 140.39, 140.77, 141.15, 141.53, 141.91,
+ 142.29
+ };
 
 #define THERMISTOR
 #define THERMISTORNOMINAL 10000
@@ -136,6 +143,18 @@ struct adc_inputs adc_in[] =
   {"Ref", ADS_P_AIN1, ADS_N_AIN9, true}    // Ref Sensor
 };
 
+// // For Reference SIA
+// struct adc_inputs adc_in[] = 
+// {
+//   {"T1", ADS_P_AIN0, ADS_N_AIN9, true},   // thermistor1
+//   {"T2", ADS_P_AIN2, ADS_N_AIN9, true},   // thermistor2
+//   {"T3", ADS_P_AIN6, ADS_N_AIN9, true},   // thermistor3
+//   {"T4", ADS_P_AIN4, ADS_N_AIN9, true},   // thermistor4
+//   {"T5", ADS_P_AIN8, ADS_N_AIN9, false},   // thermistor5
+//   {"T6", ADS_P_AIN10, ADS_N_AIN9, false},  // thermistor6
+//   {"Ref", ADS_P_AIN1, ADS_N_AIN9, true}    // Ref Sensor
+// };
+
 void regMap2(void)
 {
 	unsigned int index;
@@ -173,13 +192,13 @@ void configureAdc_thermistor(uint8_t P_AIN, uint8_t N_AIN)
   // Turn on status for debugging
   adc.regWrite( SYS_ADDR_MASK, ADS_SENDSTATUS_ENABLE );
 
-  adc.regWrite( DATARATE_ADDR_MASK, ADS_CONVMODE_SS + ADS_FILTERTYPE_LL + ADS_DR_20);
+  adc.regWrite( DATARATE_ADDR_MASK, ADS_CONVMODE_SS + ADS_FILTERTYPE_S3 + ADS_DR_50);
 
   adc.sendCommand(START_OPCODE_MASK);
   delay(50);
 }
 
-// Main thermistor function
+// TSA thermistor - Resistance to temperature calculation function
 float getCelcius( float thermistance )
  {
     float temp_C = (1/((1/TEMPERATURENOMINAL) + BCOEFFICIENT*log(thermistance/THERMISTORNOMINAL))) - 273.15;   // Convert thermistance to temperature
@@ -187,35 +206,60 @@ float getCelcius( float thermistance )
     return temp_C;
  }
 
-// For thermistor reference
-float getCelcius2(float thermistance)
-{
-  float temp_C = (1 / (A_REF + (B_REF * log(thermistance)) + (C_REF * pow(log(thermistance), 3)))) - 273.15;
-  temps[6] = temp_C;
-  return temp_C;
+// Reference thermistor - Resistance to temperature look-up function
+float getCelcius2(float resistance) {
+    if (resistance >= resistancesTherm[0]) 
+    {
+        temps[channel_1] = temperatures[0];
+        return temperatures[0];
+    } 
+    else if (resistance <= resistancesTherm[dataPoints - 1]) 
+    {
+        temps[channel_1] = temperatures[dataPoints - 1];
+        return temperatures[dataPoints - 1];
+    }
+    for (int i = 0; i < dataPoints - 1; i++) {
+        if (resistance >= resistancesTherm[i + 1] && resistance <= resistancesTherm[i]) {
+            // Linear interpolation
+            float tempDiff = temperatures[i] - temperatures[i + 1];
+            float resDiff = resistancesTherm[i] - resistancesTherm[i + 1];
+            float fraction = (resistance - resistancesTherm[i + 1]) / resDiff;
+            float temp_C = temperatures[i + 1] + (tempDiff * fraction);
+            temps[channel_1] = temp_C;
+            return temp_C;
+        }
+    }
+    // Default case, should not be reached
+    return -999; // Indicates an error
 }
 
-// For rtd reference
-float getCelcius3( float ohmMeasured )
- {
-   float below, above, interpol;
-   int i;
-   for( i=0; i<501; i++ )
-   {
-     if( ohmMeasured < ohmTable[i] )
-     {
-       above = ohmTable[i];
-       below = ohmTable[i-1];
-       break;
-     }
-   }
-   float range = above-below;
-   float remain = ohmMeasured-below;
-   float percent = (remain / range);
-   interpol = i - 1 + percent;
-   temps[6] = interpol;
-   return interpol;
- }
+// Reference RTD - Resistance to temperature look-up function
+float getCelcius3(float resistance) {
+    if (resistance <= resistancesRTD[0]) 
+    {
+        temps[channel_1] = temperatures[0];
+        return temperatures[0];
+    } 
+    else if (resistance >= resistancesRTD[dataPoints - 1]) 
+    {
+        temps[channel_1] = temperatures[dataPoints - 1];
+        return temperatures[dataPoints - 1];
+    }
+    for (int i = 0; i < dataPoints - 1; i++) 
+    {
+        if (resistance <= resistancesRTD[i + 1] && resistance >= resistancesRTD[i]) {
+            // Linear interpolation
+            float tempDiff = temperatures[i] - temperatures[i + 1];
+            float resDiff = resistancesRTD[i] - resistancesRTD[i + 1];
+            float fraction = (resistance - resistancesRTD[i + 1]) / resDiff;
+            float temp_C = temperatures[i + 1] + (tempDiff * fraction);
+            temps[channel_1] = temp_C;
+            return temp_C;
+        }
+    }
+    // Default case, should not be reached
+    return -999; // Indicates an error
+}
 
 float readData(ADS124S08 adc, bool isRef)
 {
@@ -254,11 +298,11 @@ float readData(ADS124S08 adc, bool isRef)
 
   if(isRef)
   {
-    getCelcius2(thermistance);
+    getCelcius3(thermistance);
   }
   else 
   {
-    getCelcius(thermistance);
+    getCelcius2(thermistance);
   }
   return dStatus;
 }

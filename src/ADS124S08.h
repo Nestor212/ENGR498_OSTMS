@@ -179,6 +179,7 @@
 #define ADS_CLKSEL_EXT			0x40
 #define ADS_CONVMODE_SS			0x20
 #define ADS_FILTERTYPE_LL		0x10
+#define ADS_FILTERTYPE_S3		0x00
 /* Define the data rate */
 #define ADS_DR_2_5				0x00
 #define ADS_DR_5				0x01

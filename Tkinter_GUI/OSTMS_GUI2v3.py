@@ -1,3 +1,58 @@
+"""
+Title: On-Instrument Slide Temperature Measurement System GUI
+Version: 4.1
+Author: Nestor Garcia
+Date: 08 Apr 24
+Partnership: Developed in partnership between University of Arizona Senior Design and Roche.
+
+Description:
+This application is designed to facilitate real-time temperature monitoring and visualization for laboratory slides. 
+It integrates hardware control, data acquisition, and graphical display within a user-friendly interface. 
+Key features include serial communication for temperature data collection, dynamic plotting of temperature distributions, 
+and the ability to scan for and connect to available serial ports. The system aims to enhance laboratory experiments and 
+research by providing accurate and immediate temperature readings.
+
+Features:
+- Real-time temperature monitoring for up to six different points.
+- Graphical representation of temperature distribution using matplotlib.
+- Serial port communication with automatic detection of available ports.
+- Customizable baud rate selection for serial communication.
+- Log generation for temperature data, including timestamp and values.
+- GUI developed using Tkinter for ease of use and accessibility.
+
+Requirements:
+- Python 3.x
+- External Libraries: Tkinter, NumPy, Matplotlib, SciPy, PySerial
+- Compatible with Windows, macOS, and Linux operating systems.
+
+Usage:
+To run the application, ensure all dependencies are installed and execute the main script through a Python interpreter. 
+The interface allows users to scan for serial ports, connect to a selected port, and begin temperature data acquisition 
+and visualization.
+
+Updates:
+- Polynomial Calibration replaced 2-point calibration.
+- Enhanced Real-Time Data Visualization with Live Linear Plotter.
+- Database Enhancements.
+- Updated User Interface controls.
+- Refinements in Backend Operations.
+
+Acknowledgments:
+This project was made possible through the collaborative efforts of Roche and the University of Arizona. 
+Special thanks to all team members and contributors for their dedication and support throughout the development process.
+
+License:
+[Specify the license under which this software is released, e.g., MIT, GPL, etc.]
+
+Contact Information:
+For further information, questions, or feedback, please contact:
+Nestor Garcia
+Nestor212@arizona.edu.
+"""
+
+
+
+
 import tkinter as tk
 from tkinter import ttk, scrolledtext
 import numpy as np
@@ -12,6 +67,10 @@ import json
 from serial.tools import list_ports
 import sqlite3
 import serial
+from collections import deque
+import subprocess
+import sys
+
 
 ICON_PATH = os.path.join(os.path.dirname(__file__), "ENGR498_Logo.png")
 
@@ -25,6 +84,11 @@ class GUI:
         self.isStarted = False
         self.start_dt = datetime.now().strftime("%Y_%m_%d_%H:%M")
         self.guiUpdateInterval = 1000
+        
+        self.sample_count = 0
+        self.max_samples = 3
+        # Initialize temperature_buffers with deques for efficient pop/append operations
+        self.temperature_buffers = [deque(maxlen=self.max_samples) for _ in range(7)]
         
         self.setup_variables()
         self.create_widgets()
@@ -116,6 +180,10 @@ class GUI:
         # Connect button
         self.connectButton = tk.Button(self.topFrame, text="Connect", command=self.connect)
         self.connectButton.pack(side=tk.LEFT, padx=(10, 40), pady=20)
+        
+        # Add a new button to run the OSTMS_Plotter script
+        self.plotterButton = tk.Button(self.topFrame, text="Run Plotter", command=self.run_plotter_script)
+        self.plotterButton.pack(side=tk.LEFT, padx=(10, 40), pady=20)
 
     def create_temperature_display(self):
         # Header frame for the title and clock
@@ -185,6 +253,7 @@ class GUI:
         Event handler called when an item is selected in the combobox.
         It changes the focus to the main window to prevent the combobox from trapping the focus.
         """
+        self.tsaSelect = int(self.tsaVar.get())
         self.window.focus_set()
 
     def refStatus(self):
@@ -195,39 +264,91 @@ class GUI:
     
     def logStatus(self): 
         if(self.logDataVar.get()):
-            self.log.insert(tk.END, f"Logging On: Log File - temperature_data_{self.start_dt}.csv\n")  # Add to GUI log
-  
+            self.log.insert(tk.END, f"Logging On: Log File - temperature_data_TSA{self.tsaVar.get()}_{self.start_dt}.csv\n")  # Add to GUI log
+ 
+    # def handle_data_received(self, data):
+    #     """
+    #     This method gets called by SerialPortManager with new data.
+    #     It parses the JSON data and updates the GUI with the temperatures.
+    #     """
+    #     time_dt = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+    #     self.datetimeData.configure(text = time_dt)
+    #     try:            
+    #         # Extract temperature data and update GUI
+    #         if "temps" in data:
+                
+    #             temperatures = data["temps"]
+    #             self.temperatures = temperatures[:6]
+    #             self.updateTemperatures(temperatures)
+                
+    #             # Log the received data for debugging
+    #             # self.log.insert(tk.END, f"Data received: {data}\n")
+    #             # self.log.see(tk.END)
+    #         elif "type" in data and "message" in data:  # Check if it's a log message
+    #             log_message = f"{data['type']}: {data['message']}"
+    #             # print(log_message)  # Print to console or append to a log file
+    #             self.log.insert(tk.END, time_dt + " - " + log_message + "\n")  # Add to GUI log
+        
+    #     except json.JSONDecodeError:
+    #         # If there's an error in parsing JSON, log the error for debugging
+    #         self.log.insert(tk.END, "Failed to parse JSON from incoming data.\n")
+    #         self.log.see(tk.END)
+ 
     def handle_data_received(self, data):
         """
-        This method gets called by SerialPortManager with new data.
-        It parses the JSON data and updates the GUI with the temperatures.
+        Optimized to accumulate data and update GUI more efficiently.
         """
         time_dt = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
-        self.datetimeData.configure(text = time_dt)
+        self.datetimeData.configure(text=time_dt)
         try:
-            # Attempt to parse the JSON data
-            
-            # Extract temperature data and update GUI
             if "temps" in data:
-                temperatures = data["temps"]
-                self.temperatures = temperatures[:6]
-                self.updateTemperatures(temperatures)
+                temperatures = data["temps"][:7]  # Assuming data for 7 sensors, including reference.
+
+                # Append temperatures to their respective buffers
+                for i, temp in enumerate(temperatures):
+                    self.temperature_buffers[i].append(temp)
                 
-                # Log the received data for debugging
-                # self.log.insert(tk.END, f"Data received: {data}\n")
-                # self.log.see(tk.END)
-            elif "type" in data and "message" in data:  # Check if it's a log message
+                self.sample_count += 1
+                
+                # If enough samples have been collected, average and update GUI
+                if self.sample_count == self.max_samples:
+                    self.sample_count = 0  # Reset sample counter
+                    averaged_temperatures = [sum(buff) / self.max_samples for buff in self.temperature_buffers]
+
+                    # Update GUI and log data
+                    self.updateTemperatures(averaged_temperatures)
+                    
+            elif "type" in data and "message" in data:
                 log_message = f"{data['type']}: {data['message']}"
-                # print(log_message)  # Print to console or append to a log file
-                self.log.insert(tk.END, time_dt + " - " + log_message + "\n")  # Add to GUI log
-        
+                self.log.insert(tk.END, time_dt + " - " + log_message + "\n")
+                
         except json.JSONDecodeError:
-            # If there's an error in parsing JSON, log the error for debugging
             self.log.insert(tk.END, "Failed to parse JSON from incoming data.\n")
             self.log.see(tk.END)
-  
+ 
     def handle_message(self, message):
         self.log.insert(tk.END, message + "\n")
+        
+    def run_plotter_script(self):
+            script_filename = 'Tkinter_GUI/OSTMS_Plotter.py'
+            # Start the script in a new thread to avoid freezing the GUI
+            thread = threading.Thread(target=self.execute_script, args=(script_filename,))
+            thread.start()
+
+    def execute_script(self, script_filename):
+        # Run the script using the same Python executable as the one running this script
+        process = subprocess.Popen([sys.executable, script_filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        stdout, stderr = process.communicate()  # Waits for the process to complete and gets the output
+        
+        # Log or display the output and errors
+        if stdout:
+            self.log_message(f"Output: {stdout}")
+        if stderr:
+            self.log_message(f"Error: {stderr}")
+
+    def log_message(self, message):
+        # Assuming you have a method to log messages to your GUI or console
+        print(message)  # Change this to however you handle logging within your GUI
    
 # Serial Port Management
     def scan_ports(self):
@@ -329,6 +450,7 @@ class GUI:
         """
         Updates the GUI labels with the new temperature data.
         """
+        # print(datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
         for i, temp in enumerate(temperatures):
             # Ensure we do not update more labels than we have
             if i < len(self.temp_label):
@@ -344,7 +466,7 @@ class GUI:
                 self.refTempLabel.configure(text=f"{temp:.2f}°C")
             else:
                 self.refTempLabel.configure(text="Off")
-        
+        self.temperatures = temperatures[:6]
         self.updateTemperaturePlot(False)
         
         if self.logDataVar.get():
@@ -352,145 +474,106 @@ class GUI:
 
 # Calibration & Database
     def create_db_and_table(self):
-        """
-        Creates a SQLite database and a table for storing calibration data if they don't exist.
-        """
-        # Connect to SQLite database (or create it if it doesn't exist)
-        conn = sqlite3.connect('calibration_data.db')
+        conn = sqlite3.connect('poly_calibration_data.db')
         c = conn.cursor()
-
-        # Create a table for calibration data if it doesn't exist
         c.execute('''CREATE TABLE IF NOT EXISTS calibration
                     (TSA INTEGER PRIMARY KEY,
-                    raw_low_t1 REAL, ref_low_t1 REAL, raw_high_t1 REAL, ref_high_t1 REAL,
-                    raw_low_t2 REAL, ref_low_t2 REAL, raw_high_t2 REAL, ref_high_t2 REAL,
-                    raw_low_t3 REAL, ref_low_t3 REAL, raw_high_t3 REAL, ref_high_t3 REAL,
-                    raw_low_t4 REAL, ref_low_t4 REAL, raw_high_t4 REAL, ref_high_t4 REAL,
-                    raw_low_t5 REAL, ref_low_t5 REAL, raw_high_t5 REAL, ref_high_t5 REAL,
-                    raw_low_t6 REAL, ref_low_t6 REAL, raw_high_t6 REAL, ref_high_t6 REAL)''')
-
-        # Commit the changes and close the connection to the database
+                    polynomial_coeffs_t1 TEXT, polynomial_coeffs_t2 TEXT,
+                    polynomial_coeffs_t3 TEXT, polynomial_coeffs_t4 TEXT,
+                    polynomial_coeffs_t5 TEXT, polynomial_coeffs_t6 TEXT)''')
         conn.commit()
         conn.close()
 
     def load_thermistor_sensor_assembly(self, tsa_id=1):
-        """
-        Loads calibration data for a specified Thermistor Sensor Assembly (TSA) from the database.
-        :param tsa_id: The ID of the TSA for which to load calibration data.
-        :return: A ThermistorSensorAssembly object with loaded calibration data.
-        """
-        # Initialize default calibration data in case no data is found in the database
-        default_calibration = {'raw_low': 0.00, 'ref_low': 25.0, 'raw_high': 100.00, 'ref_high': 100.0}
-        
-        # Create TSA object with default calibration data for each sensor
-        tsa = ThermistorSensorAssembly(tsa_id)
-        for sensor_id in tsa.sensors.keys():
-            tsa.set_sensor_calibration(sensor_id, **default_calibration)
-
-        # Connect to the database
-        conn = sqlite3.connect('calibration_data.db')
+        conn = sqlite3.connect('poly_calibration_data.db')
         c = conn.cursor()
-
-        # Query to fetch the calibration data for the specified TSA
+        tsa = ThermistorSensorAssembly(tsa_id)
+        calibration_data = {}
         try:
             c.execute("SELECT * FROM calibration WHERE TSA=?", (tsa_id,))
             data = c.fetchone()
-
             if data:
-                # Load calibration data from the database into the TSA
-                keys = list(tsa.sensors.keys())
-                for i, sensor_id in enumerate(keys):
-                    idx = i * 4 + 1  # Calculate the index offset based on the column order
-                    calibration_data = {
-                        'raw_low': data[idx],
-                        'ref_low': data[idx + 1],
-                        'raw_high': data[idx + 2],
-                        'ref_high': data[idx + 3]
-                    }
-                    tsa.set_sensor_calibration(sensor_id, **calibration_data)
+                for i in range(1, 7):
+                    coeffs_str = data[i]
+                    coeffs = json.loads(coeffs_str) if coeffs_str else []
+                    sensor_id = f"t{i}"
+                    tsa.set_sensor_calibration(sensor_id, coeffs)
+                    calibration_data[sensor_id] = coeffs_str
         except sqlite3.Error as e:
             print(f"Database error: {e}")
-        except Exception as e:
-            print(f"Error loading TSA calibration data: {e}")
         finally:
-            conn.close()  # Ensure the database connection is closed even if an error occurs
+            conn.close()
+        return tsa, calibration_data  # Return both the assembly and calibration data
 
-        return tsa
+
 
     def save_calibration_data(self):
-        # Prepare data for database update
-        flat_calibration_data = {}
-        for sensor_id, entries in self.calibration_entries.items():
-            for cal_point, entry in entries.items():
-                # Construct the new key by removing 'ta' and adding 't' prefix
-                new_key = f"{cal_point}_{sensor_id.replace('ta', 't')}"
-                flat_calibration_data[new_key] = float(entry.get())
+        try:
+            conn = sqlite3.connect('poly_calibration_data.db')
+            c = conn.cursor()
+            # Check if the entry exists
+            c.execute("SELECT count(*) FROM calibration WHERE TSA=?", (self.tsaSelect,))
+            exists = c.fetchone()[0]
 
-        # Assuming TSA ID is 1 for simplicity
-        self.insert_calibration_data(self.tsaSelect, flat_calibration_data)
-        tk.messagebox.showinfo("Success", "Calibration data saved successfully.")   
+            if not exists:
+                # Insert a new row if TSA doesn't exist
+                # Create placeholders for each polynomial_coeffs column
+                placeholders = ', '.join(['?' for _ in range(6)])  # 6 coefficient columns
+                # Add a placeholder for the TSA at the beginning
+                c.execute(f"INSERT INTO calibration (TSA, polynomial_coeffs_t1, polynomial_coeffs_t2, polynomial_coeffs_t3, polynomial_coeffs_t4, polynomial_coeffs_t5, polynomial_coeffs_t6) VALUES (?, {placeholders})", (self.tsaSelect, '[]', '[]', '[]', '[]', '[]', '[]'))
 
-    def insert_calibration_data(self, TSA, data):
-        print(data)
-        conn = sqlite3.connect('calibration_data.db')
-        c = conn.cursor()
-        # Assuming 'data' is a dictionary containing calibration for each sensor
-        c.execute('''INSERT OR REPLACE INTO calibration (TSA,
-                    raw_low_t1, ref_low_t1, raw_high_t1, ref_high_t1,
-                    raw_low_t2, ref_low_t2, raw_high_t2, ref_high_t2,
-                    raw_low_t3, ref_low_t3, raw_high_t3, ref_high_t3,
-                    raw_low_t4, ref_low_t4, raw_high_t4, ref_high_t4,
-                    raw_low_t5, ref_low_t5, raw_high_t5, ref_high_t5,
-                    raw_low_t6, ref_low_t6, raw_high_t6, ref_high_t6)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                    (TSA,
-                    data['raw_low_t1'], data['ref_low_t1'], data['raw_high_t1'], data['ref_high_t1'],
-                    data['raw_low_t2'], data['ref_low_t2'], data['raw_high_t2'], data['ref_high_t2'],
-                    data['raw_low_t3'], data['ref_low_t3'], data['raw_high_t3'], data['ref_high_t3'],
-                    data['raw_low_t4'], data['ref_low_t4'], data['raw_high_t4'], data['ref_high_t4'],
-                    data['raw_low_t5'], data['ref_low_t5'], data['raw_high_t5'], data['ref_high_t5'],
-                    data['raw_low_t6'], data['ref_low_t6'], data['raw_high_t6'], data['ref_high_t6']))
-        
-        conn.commit()
-        conn.close()
+            # Now, perform the update for each sensor
+            for sensor_id in range(1, 7):
+                raw_coeffs = self.calibration_entries[f"t{sensor_id}"].get()  # Get the string from the Entry widget
+                try:
+                    # Attempt to parse the string as a list; this also validates the format
+                    coeffs_list = json.loads(raw_coeffs)
+                    if not isinstance(coeffs_list, list):
+                        raise ValueError("Coefficients must be in list format.")
+                    # Convert list back to JSON string for storage
+                    coeffs_json = json.dumps(coeffs_list)
+                except json.JSONDecodeError:
+                    tk.messagebox.showerror("Error", f"Invalid format for coefficients of sensor {sensor_id}. Please enter a valid JSON list.")
+                    return
+                except ValueError as e:
+                    tk.messagebox.showerror("Error", str(e))
+                    return
+
+                column_name = f'polynomial_coeffs_t{sensor_id}'
+                c.execute(f"UPDATE calibration SET {column_name} = ? WHERE TSA = ?", (coeffs_json, self.tsaSelect))
+
+            conn.commit()
+            conn.close()
+            tk.messagebox.showinfo("Success", "Calibration data saved successfully.")
+        except Exception as e:
+            tk.messagebox.showerror("Error", str(e))
 
     def open_calibration_window(self):
-        """
-        Opens a new window for calibration settings, allowing users to view and modify calibration data for sensors.
-        """
-        self.tsa_select()  # Update the selected TSA based on user input from the main window
         calibration_window = tk.Toplevel(self.window)
-        calibration_window.title(f"Calibration Settings: TSA {self.TSA.get_ID()}")
+        calibration_window.title("Calibration Settings")
+        calibration_window.geometry('600x400')
 
-        self.calibration_entries = {}  # Dictionary to store entry widgets for calibration data
+        self.calibration_entries = {}
 
-        for sensor_id in range(1, 7):  # Assuming 6 sensors, named t1 through t6
-            # Create a frame for each sensor's calibration settings
+        instructions = tk.Label(calibration_window, text="Enter the polynomial coefficients for each sensor.\n"
+                                                        "Format: [a, b, c, ...] for ax^n + bx^(n-1) + cx^(n-2) + ...\n"
+                                                        "Example: For a quadratic curve ax^2 + bx + c, enter '[a, b, c]'",
+                                justify=tk.LEFT, padx=10)
+        instructions.pack(pady=(5, 15))
+
+        # Load existing calibration data
+        _, existing_data = self.load_thermistor_sensor_assembly(self.tsaSelect)
+
+        for sensor_id in range(1, 7):
             frame = tk.Frame(calibration_window)
             frame.pack(fill=tk.X, padx=5, pady=5)
-            label = tk.Label(frame, text=f"Sensor T{sensor_id}", width=20)
-            label.pack(side=tk.LEFT)
+            tk.Label(frame, text=f"Sensor {sensor_id} Coefficients:").pack(side=tk.LEFT)
+            entry = tk.Entry(frame, width=50)
+            entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            self.calibration_entries[f"t{sensor_id}"] = entry
+            if f"t{sensor_id}" in existing_data:
+                entry.insert(0, existing_data[f"t{sensor_id}"])
 
-            entries = {}
-            # Create entry widgets for raw low, ref low, raw high, ref high calibration points
-            for data_point in ['raw_low', 'ref_low', 'raw_high', 'ref_high']:
-                entry_frame = tk.Frame(calibration_window)
-                entry_frame.pack(fill=tk.X, padx=5, pady=2)
-                lbl = tk.Label(entry_frame, text=data_point.replace('_', ' ').title(), width=10)
-                lbl.pack(side=tk.LEFT)
-                entry = tk.Entry(entry_frame)
-                entry.pack(fill=tk.X, padx=5, expand=True)
-                entries[data_point] = entry
-
-            # Load current calibration data into the entry widgets
-            current_calibration = self.TSA.get_sensor_calibration(f"t{sensor_id}")
-            entries['raw_low'].insert(0, current_calibration['raw_low'])
-            entries['ref_low'].insert(0, current_calibration['ref_low'])
-            entries['raw_high'].insert(0, current_calibration['raw_high'])
-            entries['ref_high'].insert(0, current_calibration['ref_high'])
-            self.calibration_entries[f"t{sensor_id}"] = entries
-
-        # Save button to submit changes
         save_button = tk.Button(calibration_window, text="Save Calibration", command=self.save_calibration_data)
         save_button.pack(pady=10)
 
@@ -500,16 +583,16 @@ class GUI:
         self.log.see(tk.END)
 
     def tsa_select(self):
-        self.tsaSelect = int(self.tsaVar.get())
-        self.TSA = self.load_thermistor_sensor_assembly(self.tsaSelect)
+        print(f"Selected TSA: {self.tsaSelect}")
+        self.TSA, _ = self.load_thermistor_sensor_assembly(self.tsaSelect)
  
     def log_temperatures_to_csv(self, temperatures, ref_temperature=None):
-        filename = f"Tkinter_GUI/TestData/temperature_data_{self.start_dt}.csv"
-        headers = ["Timestamp", "T1", "T2", "T3", "T4", "T5", "T6", "Ref"]
-        cal_headers = [header for i in range(1, 7) for header in [f"Raw Low T{i}", f"Ref Low T{i}", f"Raw High T{i}", f"Ref High T{i}"]]
-        
-        headers += ["Calibration On"] + cal_headers + ["Calibrated T1", "Calibrated T2", "Calibrated T3", "Calibrated T4", "Calibrated T5", "Calibrated T6"]
-        
+        filename = f"Tkinter_GUI/TestData/temperature_data_TSA{self.tsaVar.get()}_{self.start_dt}.csv"
+        # Adjust headers to account for each sensor having dedicated columns for raw and calibrated temperatures
+        headers = ["Timestamp", "Calibration On", "Ref Temperature"]
+        for i in range(1, 7):
+            headers.extend([f"Raw T{i}", f"Calibrated T{i}", f"Polynomial Coeffs T{i}"])
+
         file_exists = os.path.isfile(filename)
         with open(filename, mode='a', newline='') as file:
             writer = csv.writer(file)
@@ -518,26 +601,27 @@ class GUI:
 
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             cal_on = "Yes" if self.calOnVar.get() else "No"
-            row = [now] + temperatures + ["Off" if ref_temperature is None else ref_temperature] + [cal_on]
-            
-            cal_values = []
-            calibrated_temperatures = []
+            ref_temp_entry = ref_temperature if ref_temperature is not None else "N/A"
+
+            # Prepare a list to accumulate data for all sensors
+            sensor_data = []
             for sensor_id in range(1, 7):
                 sensor_key = f"t{sensor_id}"
+                raw_temp = temperatures[sensor_id - 1]
+                calibrated_temp = "N/A"  # Default if calibration is off
+                polynomial_coeffs = "N/A"
                 if self.calOnVar.get():
-                    raw_temp = temperatures[sensor_id - 1]
                     calibrated_temp = self.TSA.get_calibrated_temp(sensor_key, raw_temp)
-                    calibrated_temperatures.append(calibrated_temp)
                     calibration_data = self.TSA.get_sensor_calibration(sensor_key)
-                    cal_values += [calibration_data['raw_low'], calibration_data['ref_low'],
-                                   calibration_data['raw_high'], calibration_data['ref_high']]
-                else:
-                    calibrated_temperatures.append("N/A")  # Placeholder when calibration is off
-                    cal_values += ["N/A"] * 4  # Placeholder values when calibration is off
-            
-            row += cal_values + calibrated_temperatures
-            
+                    polynomial_coeffs = ', '.join(map(str, calibration_data)) if calibration_data else "N/A"
+                
+                # Add sensor's raw temp, calibrated temp, and coeffs to the list
+                sensor_data.extend([raw_temp, calibrated_temp, polynomial_coeffs])
+
+            # Construct the row for this instance of logging
+            row = [now, cal_on, ref_temp_entry] + sensor_data
             writer.writerow(row)
+
 
     def setup_after_connection(self):
         # Indicate that the device is started
@@ -659,41 +743,42 @@ class SerialPortManager:
 
 
 class ThermistorSensor:
-    def __init__(self, identifier, raw_low=0.0, ref_low=0.0, raw_high=0.0, ref_high=0.0):
+    def __init__(self, identifier):
         self.identifier = identifier
-        self.calibration_data = {
-            'raw_low': raw_low,
-            'ref_low': ref_low,
-            'raw_high': raw_high,
-            'ref_high': ref_high
-        }
-
-    def set_calibration_data(self, raw_low, ref_low, raw_high, ref_high):
-        self.calibration_data['raw_low'] = raw_low
-        self.calibration_data['ref_low'] = ref_low
-        self.calibration_data['raw_high'] = raw_high
-        self.calibration_data['ref_high'] = ref_high
-
+        # Initialize with a default polynomial that represents a linear function y = x
+        # This means no calibration effect by default
+        self.polynomial_coeffs = [1, 0]  # Represents y = x
+    
+    def set_calibration_data(self, polynomial_coeffs):
+        if isinstance(polynomial_coeffs, int):
+            polynomial_coeffs = [polynomial_coeffs]  # Convert single integer to list
+        self.polynomial_coeffs = polynomial_coeffs
+    
     def get_calibration_data(self):
-        return self.calibration_data
+        return self.polynomial_coeffs
     
     def get_calibrated_temp(self, rawTemp):
-        return (((rawTemp - self.calibration_data['raw_low']) * (self.calibration_data['ref_high'] - self.calibration_data['ref_low'])) / (self.calibration_data['raw_high'] - self.calibration_data['raw_low'])) + self.calibration_data['raw_low']
-
+        # Calculate calibrated temperature using polynomial coefficients
+        calibrated_temp = sum(coef * rawTemp ** power for power, coef in enumerate(reversed(self.polynomial_coeffs)))
+        # print(self.polynomial_coeffs)
+        return calibrated_temp
+    
     def __repr__(self):
-        return f"ThermistorSensor(ID: {self.identifier}, Calibration: {self.calibration_data})"        
+        return f"ThermistorSensor(ID: {self.identifier}, Calibration Coeffs: {self.polynomial_coeffs})"
+
         
 class ThermistorSensorAssembly:
     def __init__(self, identifier):
         self.identifier = identifier
+        # Assuming 6 sensors in each assembly
         self.sensors = {f"t{i+1}": ThermistorSensor(f"t{i+1}") for i in range(6)}
 
     def get_ID(self):
         return self.identifier
     
-    def set_sensor_calibration(self, sensor_id, raw_low, ref_low, raw_high, ref_high):
+    def set_sensor_calibration(self, sensor_id, polynomial_coeffs):
         if sensor_id in self.sensors:
-            self.sensors[sensor_id].set_calibration_data(raw_low, ref_low, raw_high, ref_high)
+            self.sensors[sensor_id].set_calibration_data(polynomial_coeffs)
         else:
             print(f"Sensor {sensor_id} not found in assembly.")
 
@@ -712,7 +797,8 @@ class ThermistorSensorAssembly:
             return None
 
     def __repr__(self):
-        return f"ThermistorSensorAssembly(Sensors: {list(self.sensors.keys())})"
+        calibration_coeffs = {sensor_id: sensor.get_calibration_data() for sensor_id, sensor in self.sensors.items()}
+        return f"ThermistorSensorAssembly(ID: {self.identifier}, Sensors Calibration: {calibration_coeffs})"
 
 
 if __name__ == "__main__":

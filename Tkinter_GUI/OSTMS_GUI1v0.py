@@ -1,3 +1,48 @@
+"""
+Title: On-Instrument Slide Temperature Measurement System GUI
+Version: 1.0
+Author: Nestor Garcia
+Date: 14 Feb 24
+Partnership: Developed in partnership between University of Arizona Senior Design and Roche.
+
+Description:
+This application is designed to facilitate real-time temperature monitoring and visualization for laboratory slides. 
+It integrates hardware control, data acquisition, and graphical display within a user-friendly interface. 
+Key features include serial communication for temperature data collection, dynamic plotting of temperature distributions, 
+and the ability to scan for and connect to available serial ports. The system aims to enhance laboratory experiments and 
+research by providing accurate and immediate temperature readings.
+
+Features:
+- Real-time temperature monitoring for up to six different points.
+- Graphical representation of temperature distribution using matplotlib.
+- Serial port communication with automatic detection of available ports.
+- Customizable baud rate selection for serial communication.
+- Log generation for temperature data, including timestamp and values.
+- GUI developed using Tkinter for ease of use and accessibility.
+
+Requirements:
+- Python 3.x
+- External Libraries: Tkinter, NumPy, Matplotlib, SciPy, PySerial
+- Compatible with Windows, macOS, and Linux operating systems.
+
+Usage:
+To run the application, ensure all dependencies are installed and execute the main script through a Python interpreter. 
+The interface allows users to scan for serial ports, connect to a selected port, and begin temperature data acquisition 
+and visualization.
+
+Acknowledgments:
+This project was made possible through the collaborative efforts of Roche and the University of Arizona. 
+Special thanks to all team members and contributors for their dedication and support throughout the development process.
+
+License:
+[Specify the license under which this software is released, e.g., MIT, GPL, etc.]
+
+Contact Information:
+For further information, questions, or feedback, please contact:
+Nestor Garcia
+Nestor212@arizona.edu.
+"""
+
 import tkinter as tk
 from tkinter import ttk, scrolledtext
 import numpy as np
@@ -14,7 +59,7 @@ import serial
 from serial.tools import list_ports
 
 # Assuming you have an icon at the specified path
-ICON_PATH = os.path.join(os.path.dirname(__file__), "icon.png")
+ICON_PATH = os.path.join(os.path.dirname(__file__), "ENGR498_Logo.png")
 
 class GUI:
     def __init__(self, title):
@@ -148,6 +193,8 @@ class GUI:
         self.datetimeLabel.place(x = 320, y = 155)
         self.datetimeData = tk.Label(self.temperatureDataBox, text="0.00", bg="#ffffff", fg = "#000000")
         self.datetimeData.place(x = 320+80, y = 155)
+        
+        
         
         # ScrolledText for logging
         self.log = scrolledtext.ScrolledText(self.window, height=10)

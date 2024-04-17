@@ -1,8 +1,8 @@
 """
 Title: On-Instrument Slide Temperature Measurement System GUI
-Version: 1.1
+Version: 2.0
 Author: Nestor Garcia
-Date: 14 Feb 24
+Date: 08 Mar 24
 Partnership: Developed in partnership between University of Arizona Senior Design and Roche.
 
 Description:
@@ -29,6 +29,18 @@ Usage:
 To run the application, ensure all dependencies are installed and execute the main script through a Python interpreter. 
 The interface allows users to scan for serial ports, connect to a selected port, and begin temperature data acquisition 
 and visualization.
+
+Major Updates in version 2.0:
+- Database Integration for Calibration Data
+- Calibration Functionality
+- Imporived Serial Communication Handling:
+- Thermistor Sensor and Assembly Classes
+- User Interface Improvements
+- Refined Data Processing (calibration)
+- Logging and Data Handling Enhancements
+- Structural and Functional Enhancements
+- Management ans storage of multiple Thermistor Sensor Assemblies
+- Improved GUI Aesthetics and Layout
 
 Acknowledgments:
 This project was made possible through the collaborative efforts of Roche and the University of Arizona. 
@@ -63,7 +75,7 @@ from serial.tools import list_ports
 import sqlite3
 
 
-ICON_PATH = os.path.join(os.path.dirname(__file__), "icon.png")
+ICON_PATH = os.path.join(os.path.dirname(__file__), "ENGR498_Logo.png")
 
 class GUI:
     def __init__(self, title):

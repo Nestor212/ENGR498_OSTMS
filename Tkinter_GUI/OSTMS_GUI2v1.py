@@ -1,8 +1,8 @@
 """
 Title: On-Instrument Slide Temperature Measurement System GUI
-Version: 1.1
+Version: 2.1
 Author: Nestor Garcia
-Date: 14 Feb 24
+Date: 20 Mar 24
 Partnership: Developed in partnership between University of Arizona Senior Design and Roche.
 
 Description:
@@ -29,6 +29,11 @@ Usage:
 To run the application, ensure all dependencies are installed and execute the main script through a Python interpreter. 
 The interface allows users to scan for serial ports, connect to a selected port, and begin temperature data acquisition 
 and visualization.
+
+Updates:
+- Expanded Calibration to per thermistor calibration rather than per assembly.
+- Formalozed communication scheme with JSON Integration for Data Handling
+- Structural improvements and error handling.
 
 Acknowledgments:
 This project was made possible through the collaborative efforts of Roche and the University of Arizona. 
@@ -64,7 +69,7 @@ import sqlite3
 import json
 
 
-ICON_PATH = os.path.join(os.path.dirname(__file__), "icon.png")
+ICON_PATH = os.path.join(os.path.dirname(__file__), "ENGR498_Logo.png")
 
 class GUI:
     def __init__(self, title):
@@ -690,3 +695,33 @@ class ThermistorSensorAssembly:
 if __name__ == "__main__":
     app = GUI("On-Instrument Slide Temperature Measurement System")
     app.window.mainloop()
+
+
+  
+    def handle_data_received(self, data):
+        """
+        This method gets called by SerialPortManager with new data.
+        It parses the JSON data and updates the GUI with the temperatures.
+        """
+        time_dt = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+        self.datetimeData.configure(text = time_dt)
+        try:            
+            # Extract temperature data and update GUI
+            if "temps" in data:
+                
+                temperatures = data["temps"]
+                self.temperatures = temperatures[:6]
+                self.updateTemperatures(temperatures)
+                
+                # Log the received data for debugging
+                # self.log.insert(tk.END, f"Data received: {data}\n")
+                # self.log.see(tk.END)
+            elif "type" in data and "message" in data:  # Check if it's a log message
+                log_message = f"{data['type']}: {data['message']}"
+                # print(log_message)  # Print to console or append to a log file
+                self.log.insert(tk.END, time_dt + " - " + log_message + "\n")  # Add to GUI log
+        
+        except json.JSONDecodeError:
+            # If there's an error in parsing JSON, log the error for debugging
+            self.log.insert(tk.END, "Failed to parse JSON from incoming data.\n")
+            self.log.see(tk.END)
