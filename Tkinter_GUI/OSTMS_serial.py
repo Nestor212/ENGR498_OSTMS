@@ -1,4 +1,6 @@
 import serial
+import json
+import threading
 
 class SerialPortManager:
 # Initialization
