@@ -50,9 +50,6 @@ Nestor Garcia
 Nestor212@arizona.edu.
 """
 
-
-
-
 import tkinter as tk
 from tkinter import ttk, scrolledtext
 import numpy as np
@@ -66,10 +63,11 @@ import os
 import json
 from serial.tools import list_ports
 import sqlite3
-import serial
 from collections import deque
 import subprocess
 import sys
+import OSTMS_TSA as TSA 
+import OSTMS_serial as ser
 
 
 ICON_PATH = os.path.join(os.path.dirname(__file__), "ENGR498_Logo.png")
@@ -398,7 +396,7 @@ class GUI:
     
     def setup_serial_port_manager(self):
         # self.serialPortManager = self.serialPortManager = SerialPortManager(data_received_callback=self.handle_data_received, message_callback=self.handle_message)
-        self.serialPortManager = SerialPortManager(callbacks={'data_received': self.handle_data_received,
+        self.serialPortManager = ser.SerialPortManager(callbacks={'data_received': self.handle_data_received,
                                                               'message': self.handle_message})
    
     def connect(self):
@@ -487,7 +485,7 @@ class GUI:
     def load_thermistor_sensor_assembly(self, tsa_id=1):
         conn = sqlite3.connect('poly_calibration_data.db')
         c = conn.cursor()
-        tsa = ThermistorSensorAssembly(tsa_id)
+        tsa = TSA.ThermistorSensorAssembly(tsa_id)
         calibration_data = {}
         try:
             c.execute("SELECT * FROM calibration WHERE TSA=?", (tsa_id,))
@@ -655,151 +653,6 @@ class GUI:
         if self.serialPortManager.isRunning:
             self.serialPortManager.stop()
         self.window.destroy()
-
-
-class SerialPortManager:
-# Initialization
-    def __init__(self, callbacks=None, serialPortBaud=9600):
-        self.callbacks = callbacks if callbacks is not None else {}
-        # self.data_received_callback = data_received_callback
-        self.serialPortBaud = serialPortBaud
-        self.serialPort = None
-        self.serialPortName = ''
-        self.isRunning = False
-        self.read_thread = None
-        self.threadStop = False  # Add a flag to signal the thread to stop
-
-# Configuration and State Management
-    def set_name(self, serialPortName):
-        self.serialPortName = serialPortName
-
-    def start(self):
-        if self.isRunning or not self.serialPortName:
-            return False, "Serial port is already running or no port selected."
-        try:
-            self.serialPort = serial.Serial(self.serialPortName, self.serialPortBaud, timeout=2)
-            self.isRunning = True
-            self.read_thread = threading.Thread(target=self.read_from_port, daemon=True)
-            self.read_thread.start()
-            return True, ""  # No error message needed on success
-        except serial.SerialException as e:
-            error_message = f"Failed to open serial port: {e}"
-            print(error_message)
-            return False, error_message
-
-    def stop(self):
-        if self.isRunning:
-            self.isRunning = False
-            
-            if self.read_thread and self.read_thread.is_alive():
-                self.read_thread.join(timeout=5)  # Wait for the thread to terminate, with a timeout
-            
-            try:
-                if self.serialPort and self.serialPort.isOpen():
-                    self.serialPort.close()
-            except Exception as e:
-                print(f"Error closing serial port: {e}")
-            
-            self.read_thread = None
-            self.serialPort = None
-
-    def send_serial(self, data):
-        if self.isRunning and self.serialPort:
-            try:
-                self.serialPort.write(data.encode('utf-8'))
-            except serial.SerialException as e:
-                print(f"Error sending data: {e}")
-
-# Data Handling
-    def read_from_port(self):
-        while self.isRunning:
-            try:
-                if self.serialPort.inWaiting() > 0:
-                    line = self.serialPort.readline().decode('utf-8').strip()
-                    if line:
-                        try:
-                            data = json.loads(line)
-                            self.call_callback('data_received', data)
-                        except json.JSONDecodeError as e:
-                            self.call_callback('message', f"JSON Decode Error: {e}")
-            except (OSError, serial.SerialException) as e:
-                self.call_callback('message', f"Error reading from serial port: {e}")
-                self.call_callback('message', "Disconnect and try again.")
-                break  # or continue, depending on desired behavior
-            
-            # time.sleep(0.1)  # Adjust sleep time as needed
-
-# Callback Management
-    def set_callback(self, event_name, callback):
-        self.callbacks[event_name] = callback
-        
-    def call_callback(self, event_name, *args, **kwargs):
-        if event_name in self.callbacks:
-            self.callbacks[event_name](*args, **kwargs)
-
-# Utility
-    def __del__(self):
-        self.stop()
-
-
-class ThermistorSensor:
-    def __init__(self, identifier):
-        self.identifier = identifier
-        # Initialize with a default polynomial that represents a linear function y = x
-        # This means no calibration effect by default
-        self.polynomial_coeffs = [1, 0]  # Represents y = x
-    
-    def set_calibration_data(self, polynomial_coeffs):
-        if isinstance(polynomial_coeffs, int):
-            polynomial_coeffs = [polynomial_coeffs]  # Convert single integer to list
-        self.polynomial_coeffs = polynomial_coeffs
-    
-    def get_calibration_data(self):
-        return self.polynomial_coeffs
-    
-    def get_calibrated_temp(self, rawTemp):
-        # Calculate calibrated temperature using polynomial coefficients
-        calibrated_temp = sum(coef * rawTemp ** power for power, coef in enumerate(reversed(self.polynomial_coeffs)))
-        # print(self.polynomial_coeffs)
-        return calibrated_temp
-    
-    def __repr__(self):
-        return f"ThermistorSensor(ID: {self.identifier}, Calibration Coeffs: {self.polynomial_coeffs})"
-
-        
-class ThermistorSensorAssembly:
-    def __init__(self, identifier):
-        self.identifier = identifier
-        # Assuming 6 sensors in each assembly
-        self.sensors = {f"t{i+1}": ThermistorSensor(f"t{i+1}") for i in range(6)}
-
-    def get_ID(self):
-        return self.identifier
-    
-    def set_sensor_calibration(self, sensor_id, polynomial_coeffs):
-        if sensor_id in self.sensors:
-            self.sensors[sensor_id].set_calibration_data(polynomial_coeffs)
-        else:
-            print(f"Sensor {sensor_id} not found in assembly.")
-
-    def get_sensor_calibration(self, sensor_id):
-        if sensor_id in self.sensors:
-            return self.sensors[sensor_id].get_calibration_data()
-        else:
-            print(f"Sensor {sensor_id} not found in assembly.")
-            return None
-        
-    def get_calibrated_temp(self, sensor_id, rawTemp):
-        if sensor_id in self.sensors:
-            return self.sensors[sensor_id].get_calibrated_temp(rawTemp)
-        else:
-            print(f"Sensor {sensor_id} not found in assembly.")
-            return None
-
-    def __repr__(self):
-        calibration_coeffs = {sensor_id: sensor.get_calibration_data() for sensor_id, sensor in self.sensors.items()}
-        return f"ThermistorSensorAssembly(ID: {self.identifier}, Sensors Calibration: {calibration_coeffs})"
-
 
 if __name__ == "__main__":
     app = GUI("On-Instrument Slide Temperature Measurement System")
